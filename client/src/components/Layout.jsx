@@ -6,14 +6,14 @@ const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div>
+    <div className="min-h-screen bg-bg">
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      
-      <div className="lg:pl-72">
+
+      <div className="lg:pl-64 flex flex-col min-h-screen">
         <Navbar setSidebarOpen={setSidebarOpen} />
-        
-        <main className="py-10">
-          <div className="px-4 sm:px-6 lg:px-8">
+
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl animate-fade-in">
             {children}
           </div>
         </main>

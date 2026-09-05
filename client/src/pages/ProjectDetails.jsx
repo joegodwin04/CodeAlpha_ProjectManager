@@ -1,29 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
-import { 
-  ArrowLeft, Calendar, Edit, Trash2, CheckSquare, 
-  FolderKanban, Plus, MoreVertical 
-} from 'lucide-react';
+import { ArrowLeft, Calendar, Edit, Trash2, Plus, Clock, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import StatusBadge from '../components/ui/StatusBadge';
+import PriorityBadge from '../components/ui/PriorityBadge';
+import ProgressBar from '../components/ui/ProgressBar';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import EmptyState from '../components/ui/EmptyState';
+import Modal from '../components/ui/Modal';
+
+const inputClass = "block w-full rounded-lg border border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-colors";
+const selectClass = "block w-full rounded-lg border border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-colors";
 
 const ProjectDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  // Edit project state
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [projectFormData, setProjectFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Task creation/edit state
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [taskFormData, setTaskFormData] = useState({
     title: '', description: '', status: 'Todo', priority: 'Medium', dueDate: ''
   });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const fetchProjectDetails = async () => {
     setLoading(true);
@@ -47,18 +52,14 @@ const ProjectDetails = () => {
     }
   };
 
-  useEffect(() => {
-    fetchProjectDetails();
-  }, [id]);
+  useEffect(() => { fetchProjectDetails(); }, [id]);
 
   const handleDeleteProject = async () => {
-    if (window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
-      try {
-        await api.delete(`/projects/${id}`);
-        navigate('/projects');
-      } catch (error) {
-        console.error('Failed to delete project', error);
-      }
+    try {
+      await api.delete(`/projects/${id}`);
+      navigate('/projects');
+    } catch (error) {
+      console.error('Failed to delete project', error);
     }
   };
 
@@ -76,22 +77,16 @@ const ProjectDetails = () => {
     }
   };
 
-  // Task Handlers
   const handleOpenTaskModal = (task = null) => {
     if (task) {
       setEditingTask(task);
       setTaskFormData({
-        title: task.title,
-        description: task.description || '',
-        status: task.status,
-        priority: task.priority,
-        dueDate: task.dueDate || ''
+        title: task.title, description: task.description || '',
+        status: task.status, priority: task.priority, dueDate: task.dueDate || ''
       });
     } else {
       setEditingTask(null);
-      setTaskFormData({
-        title: '', description: '', status: 'Todo', priority: 'Medium', dueDate: ''
-      });
+      setTaskFormData({ title: '', description: '', status: 'Todo', priority: 'Medium', dueDate: '' });
     }
     setIsTaskModalOpen(true);
   };
@@ -106,9 +101,6 @@ const ProjectDetails = () => {
         await api.post('/tasks', { ...taskFormData, projectId: id });
       }
       setIsTaskModalOpen(false);
-      
-      // Auto-update project progress based on tasks
-      // In a real scenario, the backend should calculate this
       fetchProjectDetails();
     } catch (error) {
       console.error('Failed to save task', error);
@@ -120,7 +112,7 @@ const ProjectDetails = () => {
   const handleTaskStatusChange = async (taskId, newStatus) => {
     try {
       await api.put(`/tasks/${taskId}`, { status: newStatus });
-      fetchProjectDetails(); // Refresh to get updated stats
+      fetchProjectDetails();
     } catch (error) {
       console.error('Failed to update status', error);
     }
@@ -137,190 +129,158 @@ const ProjectDetails = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Active': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'Completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'On Hold': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'; // Planning
-    }
-  };
+  if (loading) return <LoadingSpinner text="Loading project…" />;
+  if (!project) return <div className="text-center py-20 text-slate-500">Project not found.</div>;
 
-  const getPriorityColor = (priority) => {
-    switch(priority) {
-      case 'High': return 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-300';
-      case 'Medium': return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-300';
-      default: return 'text-blue-600 bg-blue-100 dark:bg-blue-900 dark:text-blue-300'; // Low
-    }
-  };
-
-  if (loading) return <div className="flex h-64 items-center justify-center">Loading project details...</div>;
-  if (!project) return <div>Project not found</div>;
-
-  // Calculate task statistics
   const totalTasks = project.Tasks?.length || 0;
   const todoTasks = project.Tasks?.filter(t => t.status === 'Todo').length || 0;
   const inProgressTasks = project.Tasks?.filter(t => t.status === 'In Progress').length || 0;
   const doneTasks = project.Tasks?.filter(t => t.status === 'Done').length || 0;
-  
-  // Calculate dynamic progress if there are tasks
   const calculatedProgress = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : project.progress;
 
   return (
-    <div className="max-w-7xl mx-auto pb-12">
-      <div className="mb-4">
-        <Link to="/projects" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to Projects
-        </Link>
-      </div>
+    <div className="space-y-6 pb-8">
+      {/* Back link */}
+      <Link to="/projects" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Projects
+      </Link>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-gray-800">
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(project.status)}`}>
-                  {project.status}
-                </span>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getPriorityColor(project.priority)}`}>
-                  {project.priority} Priority
-                </span>
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{project.title}</h1>
-              <p className="mt-4 text-base text-gray-600 dark:text-gray-400 max-w-3xl">
-                {project.description || 'No description provided.'}
-              </p>
+      {/* Project Header */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={project.status} />
+              <PriorityBadge priority={project.priority} />
             </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:ring-gray-700 dark:hover:bg-gray-700"
-              >
-                <Edit className="-ml-0.5 mr-1.5 h-4 w-4 text-gray-400" aria-hidden="true" />
-                Edit
-              </button>
-              <button
-                onClick={handleDeleteProject}
-                className="inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-red-50 dark:bg-gray-800 dark:text-red-400 dark:ring-gray-700 dark:hover:bg-red-900/20"
-              >
-                <Trash2 className="-ml-0.5 mr-1.5 h-4 w-4" aria-hidden="true" />
-                Delete
-              </button>
-            </div>
+            <h1 className="text-2xl font-bold text-slate-900">{project.title}</h1>
+            <p className="text-sm text-slate-500 max-w-2xl leading-relaxed">
+              {project.description || 'No description provided.'}
+            </p>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setIsEditModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+              <Edit className="h-3.5 w-3.5" /> Edit
+            </button>
+            <button onClick={() => setShowDeleteConfirm(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3.5 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </button>
+          </div>
+        </div>
 
-          <dl className="mt-8 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="border-t border-gray-100 pt-4 dark:border-gray-800">
-              <dt className="text-sm font-medium leading-6 text-gray-500 dark:text-gray-400 flex items-center">
-                <Calendar className="mr-2 h-4 w-4" /> Start Date
-              </dt>
-              <dd className="mt-2 text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-                {project.startDate ? format(new Date(project.startDate), 'MMMM d, yyyy') : 'Not set'}
-              </dd>
-            </div>
-            <div className="border-t border-gray-100 pt-4 dark:border-gray-800">
-              <dt className="text-sm font-medium leading-6 text-gray-500 dark:text-gray-400 flex items-center">
-                <Calendar className="mr-2 h-4 w-4 text-red-500" /> Due Date
-              </dt>
-              <dd className="mt-2 text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-                {project.dueDate ? format(new Date(project.dueDate), 'MMMM d, yyyy') : 'Not set'}
-              </dd>
-            </div>
-            <div className="border-t border-gray-100 pt-4 dark:border-gray-800">
-              <dt className="text-sm font-medium leading-6 text-gray-500 dark:text-gray-400 flex items-center">
-                <CheckSquare className="mr-2 h-4 w-4" /> Tasks
-              </dt>
-              <dd className="mt-2 text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-                {totalTasks} Total
-              </dd>
-            </div>
-            <div className="border-t border-gray-100 pt-4 dark:border-gray-800">
-              <dt className="text-sm font-medium leading-6 text-gray-500 dark:text-gray-400">Progress</dt>
-              <dd className="mt-2 flex items-center gap-3 text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden dark:bg-gray-700 min-w-[100px]">
-                  <div 
-                    className={`h-full ${calculatedProgress === 100 ? 'bg-green-500' : 'bg-blue-600'}`} 
-                    style={{ width: `${calculatedProgress}%` }}
-                  />
-                </div>
-                <span>{calculatedProgress}%</span>
-              </dd>
-            </div>
-          </dl>
+        {/* Metadata grid */}
+        <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-4 border-t border-slate-100 pt-6">
+          <div>
+            <dt className="flex items-center gap-1.5 text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <Calendar className="h-3.5 w-3.5" /> Start Date
+            </dt>
+            <dd className="mt-1.5 text-sm font-semibold text-slate-900">
+              {project.startDate ? format(new Date(project.startDate), 'MMM d, yyyy') : '—'}
+            </dd>
+          </div>
+          <div>
+            <dt className="flex items-center gap-1.5 text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <Calendar className="h-3.5 w-3.5 text-red-400" /> Due Date
+            </dt>
+            <dd className="mt-1.5 text-sm font-semibold text-slate-900">
+              {project.dueDate ? format(new Date(project.dueDate), 'MMM d, yyyy') : '—'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tasks</dt>
+            <dd className="mt-1.5 text-sm font-semibold text-slate-900">{totalTasks}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2.5">Progress</dt>
+            <dd><ProgressBar value={calculatedProgress} size="md" /></dd>
+          </div>
         </div>
       </div>
 
-      <div className="mt-10">
-        <div className="sm:flex sm:items-center sm:justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Project Tasks</h2>
-          <button
-            onClick={() => handleOpenTaskModal()}
-            className="mt-3 sm:mt-0 inline-flex items-center gap-x-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
-          >
-            <Plus className="-ml-0.5 h-4 w-4" aria-hidden="true" />
-            Add Task
+      {/* Task stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'To Do', value: todoTasks, color: 'border-l-slate-400' },
+          { label: 'In Progress', value: inProgressTasks, color: 'border-l-blue-500' },
+          { label: 'Done', value: doneTasks, color: 'border-l-emerald-500' },
+        ].map((s) => (
+          <div key={s.label} className={`rounded-lg border border-slate-200 bg-white px-4 py-3 border-l-4 ${s.color}`}>
+            <p className="text-xs font-medium text-slate-500">{s.label}</p>
+            <p className="mt-0.5 text-xl font-bold text-slate-900 tabular-nums">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Tasks section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">Tasks</h2>
+          <button onClick={() => handleOpenTaskModal()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+            <Plus className="h-4 w-4" /> Add Task
           </button>
         </div>
 
         {totalTasks === 0 ? (
-          <div className="text-center rounded-lg border-2 border-dashed border-gray-300 p-12 dark:border-gray-700 bg-white dark:bg-gray-900">
-            <CheckSquare className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">No tasks yet</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Break this project down into actionable tasks.
-            </p>
-          </div>
+          <EmptyState
+            icon={Plus}
+            title="No tasks yet"
+            description="Break this project into actionable tasks."
+            action={
+              <button onClick={() => handleOpenTaskModal()}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors">
+                <Plus className="h-4 w-4" /> Add First Task
+              </button>
+            }
+          />
         ) : (
-          <div className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl dark:bg-gray-900 dark:ring-gray-800">
-            {/* Task stats */}
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6 flex gap-6 text-sm dark:bg-gray-800/50 dark:border-gray-800">
-              <span className="font-medium text-gray-900 dark:text-white">{totalTasks} Total</span>
-              <span className="text-gray-500 dark:text-gray-400">{todoTasks} Todo</span>
-              <span className="text-blue-600 dark:text-blue-400">{inProgressTasks} In Progress</span>
-              <span className="text-green-600 dark:text-green-400">{doneTasks} Done</span>
-            </div>
-            
-            <ul role="list" className="divide-y divide-gray-100 dark:divide-gray-800">
-              {project.Tasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)).map((task) => (
-                <li key={task.id} className="relative flex justify-between gap-x-6 px-4 py-5 hover:bg-gray-50 sm:px-6 dark:hover:bg-gray-800/50">
-                  <div className="flex min-w-0 gap-x-4 items-center">
-                    <select
-                      value={task.status}
-                      onChange={(e) => handleTaskStatusChange(task.id, e.target.value)}
-                      className="h-8 rounded-md border-0 py-1 pl-2 pr-8 text-xs font-medium ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 dark:bg-gray-800 dark:text-white dark:ring-gray-700"
-                    >
-                      <option value="Todo">Todo</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Done">Done</option>
-                    </select>
-                    <div className="min-w-0 flex-auto">
-                      <p className={`text-sm font-semibold leading-6 text-gray-900 dark:text-white ${task.status === 'Done' ? 'line-through text-gray-500' : ''}`}>
-                        {task.title}
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <ul className="divide-y divide-slate-100">
+              {project.Tasks.sort((a, b) => {
+                if (a.status === 'Done' && b.status !== 'Done') return 1;
+                if (a.status !== 'Done' && b.status === 'Done') return -1;
+                return new Date(a.dueDate || '9999') - new Date(b.dueDate || '9999');
+              }).map((task) => (
+                <li key={task.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors group">
+                  {/* Status select */}
+                  <select value={task.status} onChange={(e) => handleTaskStatusChange(task.id, e.target.value)}
+                    className="h-8 rounded-md border border-slate-300 bg-white py-0 pl-2 pr-7 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none shrink-0">
+                    <option value="Todo">Todo</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Done">Done</option>
+                  </select>
+
+                  {/* Task info */}
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm font-medium ${task.status === 'Done' ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                      {task.title}
+                    </p>
+                    {task.dueDate && (
+                      <p className={`mt-0.5 flex items-center gap-1 text-xs ${
+                        new Date(task.dueDate) < new Date() && task.status !== 'Done'
+                          ? 'text-red-600 font-medium' : 'text-slate-500'
+                      }`}>
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(task.dueDate), 'MMM d, yyyy')}
                       </p>
-                      {task.dueDate && (
-                        <div className="mt-1 flex items-center gap-x-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                          <Calendar className="h-3 w-3" />
-                          <span className={new Date(task.dueDate) < new Date() && task.status !== 'Done' ? 'text-red-500 font-medium' : ''}>
-                            {format(new Date(task.dueDate), 'MMM d, yyyy')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-x-4">
-                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                      {task.priority}
-                    </span>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleOpenTaskModal(task)} className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => handleDeleteTask(task.id)} className="text-gray-400 hover:text-red-500">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+
+                  {/* Priority + actions */}
+                  <PriorityBadge priority={task.priority} />
+                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleOpenTaskModal(task)}
+                      className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                      aria-label="Edit task">
+                      <Edit className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => handleDeleteTask(task.id)}
+                      className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      aria-label="Delete task">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </li>
               ))}
@@ -329,208 +289,138 @@ const ProjectDetails = () => {
         )}
       </div>
 
-      {/* Edit Project Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
-            <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Edit Project</h2>
-            <form onSubmit={handleUpdateProject} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
-                <input
-                  type="text"
-                  required
-                  value={projectFormData.title}
-                  onChange={(e) => setProjectFormData({...projectFormData, title: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                <textarea
-                  rows={3}
-                  value={projectFormData.description}
-                  onChange={(e) => setProjectFormData({...projectFormData, description: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
-                  <select
-                    value={projectFormData.status}
-                    onChange={(e) => setProjectFormData({...projectFormData, status: e.target.value})}
-                    className="mt-1 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                  >
-                    <option value="Planning">Planning</option>
-                    <option value="Active">Active</option>
-                    <option value="On Hold">On Hold</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
-                  <select
-                    value={projectFormData.priority}
-                    onChange={(e) => setProjectFormData({...projectFormData, priority: e.target.value})}
-                    className="mt-1 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Date</label>
-                  <input
-                    type="date"
-                    value={projectFormData.startDate}
-                    onChange={(e) => setProjectFormData({...projectFormData, startDate: e.target.value})}
-                    className="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
-                  <input
-                    type="date"
-                    value={projectFormData.dueDate}
-                    onChange={(e) => setProjectFormData({...projectFormData, dueDate: e.target.value})}
-                    className="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                  />
-                </div>
-              </div>
-
-              {/* Progress Slider */}
-              <div>
-                <label className="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <span>Manual Progress Override</span>
-                  <span>{projectFormData.progress}%</span>
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={projectFormData.progress}
-                  onChange={(e) => setProjectFormData({...projectFormData, progress: parseInt(e.target.value)})}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2 dark:bg-gray-700"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Note: Progress is normally calculated automatically from tasks, but you can override it here.
-                </p>
-              </div>
-
-              <div className="mt-5 sm:mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="inline-flex justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:ring-gray-600 dark:hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="inline-flex justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
+      {/* Delete Confirm Modal */}
+      <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete Project" size="sm">
+        <p className="text-sm text-slate-600">
+          Are you sure you want to delete <strong>{project.title}</strong>? This will also delete all tasks within it. This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-3 pt-5">
+          <button onClick={() => setShowDeleteConfirm(false)}
+            className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleDeleteProject}
+            className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-500 transition-colors">
+            Delete Project
+          </button>
         </div>
-      )}
+      </Modal>
+
+      {/* Edit Project Modal */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Project">
+        <form onSubmit={handleUpdateProject} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Title</label>
+            <input type="text" required value={projectFormData.title}
+              onChange={(e) => setProjectFormData({...projectFormData, title: e.target.value})} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
+            <textarea rows={3} value={projectFormData.description}
+              onChange={(e) => setProjectFormData({...projectFormData, description: e.target.value})} className={inputClass} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
+              <select value={projectFormData.status} onChange={(e) => setProjectFormData({...projectFormData, status: e.target.value})} className={selectClass}>
+                <option value="Planning">Planning</option>
+                <option value="Active">Active</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Priority</label>
+              <select value={projectFormData.priority} onChange={(e) => setProjectFormData({...projectFormData, priority: e.target.value})} className={selectClass}>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Start Date</label>
+              <input type="date" value={projectFormData.startDate}
+                onChange={(e) => setProjectFormData({...projectFormData, startDate: e.target.value})} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Due Date</label>
+              <input type="date" value={projectFormData.dueDate}
+                onChange={(e) => setProjectFormData({...projectFormData, dueDate: e.target.value})} className={inputClass} />
+            </div>
+          </div>
+          <div>
+            <label className="flex justify-between text-sm font-medium text-slate-700 mb-1.5">
+              <span>Progress Override</span>
+              <span className="text-indigo-600">{projectFormData.progress}%</span>
+            </label>
+            <input type="range" min="0" max="100" value={projectFormData.progress}
+              onChange={(e) => setProjectFormData({...projectFormData, progress: parseInt(e.target.value)})}
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+            <p className="text-xs text-slate-500 mt-1">Progress is auto-calculated from tasks unless overridden.</p>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <button type="button" onClick={() => setIsEditModalOpen(false)}
+              className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors">
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Task Modal */}
-      {isTaskModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
-            <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">
-              {editingTask ? 'Edit Task' : 'Add Task'}
-            </h2>
-            <form onSubmit={handleSaveTask} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
-                <input
-                  type="text"
-                  required
-                  value={taskFormData.title}
-                  onChange={(e) => setTaskFormData({...taskFormData, title: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                <textarea
-                  rows={2}
-                  value={taskFormData.description}
-                  onChange={(e) => setTaskFormData({...taskFormData, description: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
-                  <select
-                    value={taskFormData.status}
-                    onChange={(e) => setTaskFormData({...taskFormData, status: e.target.value})}
-                    className="mt-1 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                  >
-                    <option value="Todo">Todo</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Done">Done</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
-                  <select
-                    value={taskFormData.priority}
-                    onChange={(e) => setTaskFormData({...taskFormData, priority: e.target.value})}
-                    className="mt-1 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
-                <input
-                  type="date"
-                  value={taskFormData.dueDate}
-                  onChange={(e) => setTaskFormData({...taskFormData, dueDate: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
-                />
-              </div>
-
-              <div className="mt-5 sm:mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsTaskModalOpen(false)}
-                  className="inline-flex justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:ring-gray-600 dark:hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="inline-flex justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </form>
+      <Modal isOpen={isTaskModalOpen} onClose={() => setIsTaskModalOpen(false)} title={editingTask ? 'Edit Task' : 'Add Task'}>
+        <form onSubmit={handleSaveTask} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Title</label>
+            <input type="text" required value={taskFormData.title}
+              onChange={(e) => setTaskFormData({...taskFormData, title: e.target.value})} className={inputClass}
+              placeholder="e.g., Implement login page" />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
+            <textarea rows={2} value={taskFormData.description}
+              onChange={(e) => setTaskFormData({...taskFormData, description: e.target.value})} className={inputClass}
+              placeholder="Optional details…" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
+              <select value={taskFormData.status} onChange={(e) => setTaskFormData({...taskFormData, status: e.target.value})} className={selectClass}>
+                <option value="Todo">Todo</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Done">Done</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Priority</label>
+              <select value={taskFormData.priority} onChange={(e) => setTaskFormData({...taskFormData, priority: e.target.value})} className={selectClass}>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Due Date</label>
+            <input type="date" value={taskFormData.dueDate}
+              onChange={(e) => setTaskFormData({...taskFormData, dueDate: e.target.value})} className={inputClass} />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <button type="button" onClick={() => setIsTaskModalOpen(false)}
+              className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors">
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
