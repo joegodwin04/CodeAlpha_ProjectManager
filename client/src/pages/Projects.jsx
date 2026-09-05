@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { Plus, Search, Calendar, CheckSquare } from 'lucide-react';
+import { Plus, Search, Calendar, CheckSquare, Folder } from 'lucide-react';
 import { format } from 'date-fns';
 
 const Projects = () => {
