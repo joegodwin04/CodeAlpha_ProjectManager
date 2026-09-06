@@ -2,14 +2,14 @@ import React from 'react';
 
 const statusConfig = {
   // Project statuses
-  Planning:   { bg: 'bg-slate-100',  text: 'text-slate-700',  dot: 'bg-slate-400' },
-  Active:     { bg: 'bg-blue-50',    text: 'text-blue-700',   dot: 'bg-blue-500' },
-  'On Hold':  { bg: 'bg-amber-50',   text: 'text-amber-700',  dot: 'bg-amber-500' },
-  Completed:  { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  Planning:   { bg: 'bg-slate-500/15', text: 'text-slate-300',   dot: 'bg-slate-400' },
+  Active:     { bg: 'bg-blue-500/15',  text: 'text-blue-400',    dot: 'bg-blue-400' },
+  'On Hold':  { bg: 'bg-amber-500/15', text: 'text-amber-400',   dot: 'bg-amber-400' },
+  Completed:  { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400' },
   // Task statuses
-  Todo:          { bg: 'bg-slate-100',  text: 'text-slate-700',  dot: 'bg-slate-400' },
-  'In Progress': { bg: 'bg-blue-50',    text: 'text-blue-700',   dot: 'bg-blue-500' },
-  Done:          { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  Todo:          { bg: 'bg-slate-500/15',   text: 'text-slate-300',   dot: 'bg-slate-400' },
+  'In Progress': { bg: 'bg-blue-500/15',    text: 'text-blue-400',    dot: 'bg-blue-400' },
+  Done:          { bg: 'bg-emerald-500/15',  text: 'text-emerald-400', dot: 'bg-emerald-400' },
 };
 
 const StatusBadge = ({ status }) => {

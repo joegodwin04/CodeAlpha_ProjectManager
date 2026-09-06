@@ -2,9 +2,9 @@ import React from 'react';
 import { ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
 
 const priorityConfig = {
-  High:   { bg: 'bg-red-50',    text: 'text-red-700',    icon: ArrowUp },
-  Medium: { bg: 'bg-amber-50',  text: 'text-amber-700',  icon: ArrowRight },
-  Low:    { bg: 'bg-blue-50',   text: 'text-blue-700',   icon: ArrowDown },
+  High:   { bg: 'bg-red-500/15',    text: 'text-red-400',    icon: ArrowUp },
+  Medium: { bg: 'bg-amber-500/15',  text: 'text-amber-400',  icon: ArrowRight },
+  Low:    { bg: 'bg-cyan-500/15',   text: 'text-cyan-400',   icon: ArrowDown },
 };
 
 const PriorityBadge = ({ priority }) => {

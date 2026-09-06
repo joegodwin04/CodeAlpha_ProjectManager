@@ -28,9 +28,25 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const requestUrl = error.config?.url || '';
+      const isAuthEndpoint = 
+        requestUrl.includes('/auth/login') ||
+        requestUrl.includes('/auth/register') ||
+        requestUrl.includes('/auth/forgot-password') ||
+        requestUrl.includes('/auth/verify-security-answer') ||
+        requestUrl.includes('/auth/reset-password');
+
+      // Only perform global logout/redirect if the 401 was on a protected session request
+      if (!isAuthEndpoint) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        if (window.location.pathname !== '/login' && 
+            window.location.pathname !== '/register' && 
+            window.location.pathname !== '/forgot-password' && 
+            window.location.pathname !== '/reset-password') {
+          window.location.href = '/login';
+        }
+      }
     }
     return Promise.reject(error);
   }

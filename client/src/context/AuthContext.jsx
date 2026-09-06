@@ -9,25 +9,26 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
 
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-    }
-    
-    // Optionally verify token with backend here
+  useEffect(() => {
     const verifyToken = async () => {
+      const token = localStorage.getItem('token');
       if (token) {
         try {
           const { data } = await api.get('/auth/me');
           setUser(data);
           localStorage.setItem('user', JSON.stringify(data));
         } catch (error) {
-          console.error('Token verification failed', error);
+          console.error('Session verification failed or token expired:', error.message);
           logout();
         }
+      } else {
+        logout();
       }
       setLoading(false);
     };
@@ -43,18 +44,27 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const register = async (name, username, email, password) => {
-    const { data } = await api.post('/auth/register', { name, username, email, password });
+  const register = async (name, username, email, password, securityQuestion, securityAnswer) => {
+    const { data } = await api.post('/auth/register', {
+      name,
+      username,
+      email,
+      password,
+      securityQuestion,
+      securityAnswer
+    });
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data));
     setUser(data);
     return data;
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
+  const updateUser = (userData) => {
+    setUser(prev => {
+      const updated = { ...prev, ...userData };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const value = {
@@ -63,6 +73,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateUser,
   };
 
   return (

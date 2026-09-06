@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, CheckSquare, User, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, CheckSquare, User, LogOut, X, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const navigation = [
@@ -14,17 +14,18 @@ const SidebarContent = ({ onNavClick }) => {
   const { user, logout } = useAuth();
 
   return (
-    <div className="flex h-full flex-col bg-white border-r border-slate-200">
+    <div className="flex h-full flex-col bg-bg-secondary border-r border-white/[0.06]">
       {/* Brand */}
-      <div className="flex h-16 shrink-0 items-center gap-2.5 px-5 border-b border-slate-100">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500">
-          <FolderKanban className="h-4.5 w-4.5 text-white" />
+      <div className="flex h-16 shrink-0 items-center gap-2.5 px-5 border-b border-white/[0.06]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
+          <Zap className="h-4 w-4 text-white" />
         </div>
-        <span className="text-base font-bold text-slate-900 tracking-tight">ProjectManager</span>
+        <span className="text-base font-bold text-white tracking-tight">ProjectManager</span>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4">
+        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Menu</p>
         <ul role="list" className="space-y-1">
           {navigation.map((item) => (
             <li key={item.name}>
@@ -33,10 +34,10 @@ const SidebarContent = ({ onNavClick }) => {
                 end={item.href === '/'}
                 onClick={onNavClick}
                 className={({ isActive }) =>
-                  `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-violet-500/15 text-violet-400 border-l-2 border-violet-500 ml-0'
+                      : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
                   }`
                 }
               >
@@ -44,7 +45,7 @@ const SidebarContent = ({ onNavClick }) => {
                   <>
                     <item.icon
                       className={`h-[18px] w-[18px] shrink-0 transition-colors ${
-                        isActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'
+                        isActive ? 'text-violet-400' : 'text-slate-500 group-hover:text-slate-300'
                       }`}
                       aria-hidden="true"
                     />
@@ -58,21 +59,21 @@ const SidebarContent = ({ onNavClick }) => {
       </nav>
 
       {/* User area + Logout */}
-      <div className="border-t border-slate-200 px-3 py-3">
+      <div className="border-t border-white/[0.06] px-3 py-3">
         <div className="flex items-center gap-3 rounded-lg px-3 py-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-sm font-semibold text-white">
             {user?.name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-900">{user?.name}</p>
+            <p className="truncate text-sm font-medium text-slate-200">{user?.name}</p>
             <p className="truncate text-xs text-slate-500">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={logout}
-          className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+          className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-colors"
         >
-          <LogOut className="h-[18px] w-[18px] text-slate-400" aria-hidden="true" />
+          <LogOut className="h-[18px] w-[18px]" aria-hidden="true" />
           Log out
         </button>
       </div>
@@ -86,7 +87,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       {/* Mobile overlay + drawer */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
           <div className="fixed inset-y-0 left-0 flex w-72 animate-slide-in-left">
             <div className="relative flex w-full flex-col">
               <div className="absolute right-0 top-0 -mr-12 pt-4">

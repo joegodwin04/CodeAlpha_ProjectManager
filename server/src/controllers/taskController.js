@@ -87,6 +87,19 @@ const updateTask = async (req, res) => {
       projectId: projectId || task.projectId
     });
 
+    // Recalculate and persist project progress based on task completion
+    try {
+      const affectedProjectId = projectId || task.projectId;
+      const allProjectTasks = await Task.findAll({ where: { projectId: affectedProjectId } });
+      const totalCount = allProjectTasks.length;
+      const doneCount = allProjectTasks.filter(t => t.status === 'Done').length;
+      const newProgress = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+      await Project.update({ progress: newProgress }, { where: { id: affectedProjectId, userId: req.user.id } });
+    } catch (progressErr) {
+      // Non-fatal: log but don't fail the task update response
+      console.error('Failed to recalculate project progress:', progressErr.message);
+    }
+
     res.json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -102,7 +115,20 @@ const deleteTask = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    const projectId = task.projectId;
     await task.destroy();
+
+    // Recalculate project progress after deletion
+    try {
+      const remainingTasks = await Task.findAll({ where: { projectId } });
+      const totalCount = remainingTasks.length;
+      const doneCount = remainingTasks.filter(t => t.status === 'Done').length;
+      const newProgress = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+      await Project.update({ progress: newProgress }, { where: { id: projectId, userId: req.user.id } });
+    } catch (progressErr) {
+      console.error('Failed to recalculate project progress after deletion:', progressErr.message);
+    }
+
     res.json({ message: 'Task removed' });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -36,14 +36,14 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" aria-hidden="true" />
-      <div className={`animate-scale-in relative w-full ${sizeClasses[size]} rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/5`}>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" />
+      <div className={`animate-scale-in relative w-full ${sizeClasses[size]} rounded-xl bg-surface border border-white/[0.08] shadow-2xl`}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h2 id="modal-title" className="text-lg font-semibold text-slate-900">{title}</h2>
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-4">
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-100">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-1.5 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300 transition-colors"
             aria-label="Close dialog"
           >
             <X className="h-5 w-5" />

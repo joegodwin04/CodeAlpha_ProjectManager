@@ -9,8 +9,13 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
+      // Prevent password-reset tokens from being used for regular API authentication
+      if (decoded.purpose === 'password_reset') {
+        return res.status(401).json({ message: 'Not authorized, invalid token type' });
+      }
+
       req.user = await User.findByPk(decoded.id, {
-        attributes: { exclude: ['password'] }
+        attributes: { exclude: ['password', 'securityAnswerHash'] }
       });
 
       if (!req.user) {

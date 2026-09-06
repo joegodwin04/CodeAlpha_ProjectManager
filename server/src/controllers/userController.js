@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const getUserProfile = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ['password'] }
+      attributes: { exclude: ['password', 'securityAnswerHash'] }
     });
 
     const projectCount = await Project.count({ where: { userId: req.user.id } });
@@ -35,10 +35,18 @@ const updateUserProfile = async (req, res) => {
 
     if (user) {
       user.name = req.body.name || user.name;
-      user.email = req.body.email || user.email;
+      user.email = req.body.email ? req.body.email.trim().toLowerCase() : user.email;
       
       if (req.body.password) {
         user.password = req.body.password;
+      }
+
+      // Allow configuring or updating security question and answer
+      if (req.body.securityQuestion && req.body.securityAnswer && req.body.securityAnswer.trim()) {
+        user.securityQuestion = req.body.securityQuestion.trim();
+        const salt = await bcrypt.genSalt(10);
+        const normalizedAnswer = req.body.securityAnswer.trim().toLowerCase();
+        user.securityAnswerHash = await bcrypt.hash(normalizedAnswer, salt);
       }
 
       const updatedUser = await user.save();
@@ -48,6 +56,7 @@ const updateUserProfile = async (req, res) => {
         name: updatedUser.name,
         username: updatedUser.username,
         email: updatedUser.email,
+        securityQuestion: updatedUser.securityQuestion || null,
       });
     } else {
       res.status(404).json({ message: 'User not found' });

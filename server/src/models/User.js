@@ -28,6 +28,14 @@ const User = sequelize.define('User', {
   password: {
     type: DataTypes.STRING,
     allowNull: false,
+  },
+  securityQuestion: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  securityAnswerHash: {
+    type: DataTypes.STRING,
+    allowNull: true,
   }
 }, {
   hooks: {
