@@ -33,34 +33,63 @@ const updateUserProfile = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
 
-    if (user) {
-      user.name = req.body.name || user.name;
-      user.email = req.body.email ? req.body.email.trim().toLowerCase() : user.email;
-      
-      if (req.body.password) {
-        user.password = req.body.password;
-      }
-
-      // Allow configuring or updating security question and answer
-      if (req.body.securityQuestion && req.body.securityAnswer && req.body.securityAnswer.trim()) {
-        user.securityQuestion = req.body.securityQuestion.trim();
-        const salt = await bcrypt.genSalt(10);
-        const normalizedAnswer = req.body.securityAnswer.trim().toLowerCase();
-        user.securityAnswerHash = await bcrypt.hash(normalizedAnswer, salt);
-      }
-
-      const updatedUser = await user.save();
-
-      res.json({
-        id: updatedUser.id,
-        name: updatedUser.name,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        securityQuestion: updatedUser.securityQuestion || null,
-      });
-    } else {
-      res.status(404).json({ message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    if (req.body.name) {
+      user.name = req.body.name.trim();
+    }
+    if (req.body.email) {
+      user.email = req.body.email.trim().toLowerCase();
+    }
+
+    // Password update for authenticated user with security question verification
+    const newPassword = req.body.newPassword || req.body.password;
+    if (newPassword || req.body.securityAnswer) {
+      if (!req.body.securityAnswer || !req.body.securityAnswer.trim()) {
+        return res.status(400).json({ message: 'Security answer is required' });
+      }
+
+      if (!newPassword) {
+        return res.status(400).json({ message: 'New password is required' });
+      }
+
+      if (!user.securityQuestion || !user.securityAnswerHash) {
+        return res.status(400).json({ message: 'No security question is configured for this account' });
+      }
+
+      const normalizedAnswer = req.body.securityAnswer.trim().toLowerCase();
+      const isMatch = await bcrypt.compare(normalizedAnswer, user.securityAnswerHash);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Security answer is incorrect' });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+      }
+
+      user.password = newPassword;
+    }
+
+    // Allow configuring or updating security question and answer (preserved for recovery compatibility)
+    if (req.body.securityQuestion && req.body.securityAnswer && req.body.securityAnswer.trim()) {
+      user.securityQuestion = req.body.securityQuestion.trim();
+      const salt = await bcrypt.genSalt(10);
+      const normalizedAnswer = req.body.securityAnswer.trim().toLowerCase();
+      user.securityAnswerHash = await bcrypt.hash(normalizedAnswer, salt);
+    }
+
+    const updatedUser = await user.save();
+
+    res.json({
+      id: updatedUser.id,
+      name: updatedUser.name,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      securityQuestion: updatedUser.securityQuestion || null,
+      message: newPassword ? 'Password updated successfully' : 'Profile updated successfully'
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

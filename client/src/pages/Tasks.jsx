@@ -6,9 +6,12 @@ import PriorityBadge from '../components/ui/PriorityBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
+import CustomSelect from '../components/ui/CustomSelect';
 
-const inputClass = "block w-full rounded-lg border border-white/[0.08] bg-white/[0.04] py-2.5 px-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none transition-colors";
-const selectClass = "block w-full rounded-lg border border-white/[0.08] bg-white/[0.04] py-2.5 px-3 text-sm text-slate-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none transition-colors appearance-none";
+const inputClass = "block w-full rounded-lg border border-white/[0.09] bg-[#121526] py-2.5 px-3.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none transition-all";
+
+const statusOptions = ['Todo', 'In Progress', 'Done'];
+const priorityOptions = ['Low', 'Medium', 'High'];
 
 const Tasks = () => {
   const [tasks, setTasks] = useState([]);
@@ -26,10 +29,7 @@ const Tasks = () => {
   const [editingTask, setEditingTask] = useState(null);
   const [togglingTaskIds, setTogglingTaskIds] = useState(new Set());
 
-  useEffect(() => { fetchData(); }, []);
-
   const fetchData = async () => {
-    setLoading(true);
     try {
       const [tasksRes, projectsRes] = await Promise.all([
         api.get('/tasks'),
@@ -46,6 +46,10 @@ const Tasks = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleOpenCreateModal = () => {
     setEditingTask(null);
@@ -82,10 +86,14 @@ const Tasks = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const payload = {
+        ...formData,
+        dueDate: formData.dueDate || null,
+      };
       if (editingTask) {
-        await api.put(`/tasks/${editingTask.id}`, formData);
+        await api.put(`/tasks/${editingTask.id}`, payload);
       } else {
-        await api.post('/tasks', formData);
+        await api.post('/tasks', payload);
       }
       setIsModalOpen(false);
       fetchData();
@@ -117,7 +125,7 @@ const Tasks = () => {
       fetchData();
     } catch (error) {
       console.error('Failed to toggle task completion', error);
-      fetchData(); // revert on failure
+      fetchData();
     } finally {
       setTogglingTaskIds(prev => { const next = new Set(prev); next.delete(task.id); return next; });
     }
@@ -126,7 +134,7 @@ const Tasks = () => {
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || task.status === statusFilter;
-    const matchesProject = projectFilter === 'All' || task.projectId === projectFilter;
+    const matchesProject = projectFilter === 'All' || String(task.projectId) === String(projectFilter);
     return matchesSearch && matchesStatus && matchesProject;
   });
 
@@ -138,16 +146,19 @@ const Tasks = () => {
   if (loading) return <LoadingSpinner text="Loading tasks…" />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Tasks</h1>
-          <p className="mt-1 text-sm text-slate-500">Track and manage every task across your workspace.</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight sm:text-3xl">Tasks</h1>
+          <p className="mt-1 text-sm text-slate-400">Track and manage every deliverable across your projects.</p>
         </div>
-        <button onClick={handleOpenCreateModal} disabled={projects.length === 0}
+        <button
+          onClick={handleOpenCreateModal}
+          disabled={projects.length === 0}
           title={projects.length === 0 ? 'Create a project first' : ''}
-          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+          className="btn-primary"
+        >
           <Plus className="h-4 w-4" /> New Task
         </button>
       </div>
@@ -155,19 +166,26 @@ const Tasks = () => {
       {/* Status summary pills */}
       <div className="flex flex-wrap gap-2">
         {[
-          { label: 'All', value: 'All', count: tasks.length },
-          { label: 'Todo', value: 'Todo', count: todoCount },
+          { label: 'All Tasks', value: 'All', count: tasks.length },
+          { label: 'To Do', value: 'Todo', count: todoCount },
           { label: 'In Progress', value: 'In Progress', count: inProgressCount },
-          { label: 'Done', value: 'Done', count: doneCount },
+          { label: 'Completed', value: 'Done', count: doneCount },
         ].map((s) => (
-          <button key={s.value} onClick={() => setStatusFilter(s.value)}
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+          <button
+            key={s.value}
+            onClick={() => setStatusFilter(s.value)}
+            className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
               statusFilter === s.value
-                ? 'bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30'
-                : 'bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-slate-200'
+                ? 'bg-violet-600/20 text-violet-200 border border-violet-500/40 shadow-sm'
+                : 'bg-[#121526] border border-white/[0.07] text-slate-400 hover:border-white/[0.14] hover:text-slate-200'
+            }`}
+          >
+            <span>{s.label}</span>
+            <span className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums font-bold ${
+              statusFilter === s.value ? 'bg-violet-500/30 text-violet-100' : 'bg-white/[0.06] text-slate-400'
             }`}>
-            {s.label}
-            <span className={`rounded-full px-2 py-0.5 text-[10px] tabular-nums ${statusFilter === s.value ? 'bg-violet-500/30 text-violet-200' : 'bg-white/[0.06] text-slate-300'}`}>{s.count}</span>
+              {s.count}
+            </span>
           </button>
         ))}
       </div>
@@ -176,16 +194,26 @@ const Tasks = () => {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-            <Search className="h-4 w-4 text-slate-600" />
+            <Search className="h-4 w-4 text-slate-500" />
           </div>
-          <input type="text" placeholder="Search tasks…" value={searchTerm}
+          <input
+            type="text"
+            placeholder="Search tasks by title…"
+            value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full rounded-lg border border-white/[0.08] bg-white/[0.04] py-2.5 pl-10 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none transition-colors" />
+            className="block w-full rounded-lg border border-white/[0.09] bg-[#121526] py-2.5 pl-10 pr-3.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none transition-all"
+          />
         </div>
-        <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className={`${selectClass} sm:w-56`}>
-          <option value="All">All Projects</option>
-          {projects.map(p => (<option key={p.id} value={p.id}>{p.title}</option>))}
-        </select>
+        <div className="w-full sm:w-60 shrink-0">
+          <CustomSelect
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            options={[
+              { value: 'All', label: 'All Projects' },
+              ...projects.map(p => ({ value: p.id, label: p.title }))
+            ]}
+          />
+        </div>
       </div>
 
       {/* Task list */}
@@ -193,22 +221,26 @@ const Tasks = () => {
         <EmptyState
           icon={CheckSquare}
           title="No tasks found"
-          description={tasks.length === 0 ? "Create a task to start tracking your work." : "Try adjusting your search or filters."}
+          description={tasks.length === 0 ? "Create your first task to start tracking deliverables." : "No tasks match your filter criteria."}
           action={tasks.length === 0 && (
-            <button onClick={handleOpenCreateModal} disabled={projects.length === 0}
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-purple-500 disabled:opacity-50 transition-all">
+            <button
+              onClick={handleOpenCreateModal}
+              disabled={projects.length === 0}
+              className="btn-primary"
+            >
               <Plus className="h-4 w-4" /> New Task
             </button>
           )}
         />
       ) : (
-        <div className="rounded-xl border border-white/[0.06] bg-surface overflow-hidden">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#121526] overflow-hidden shadow-sm">
           <ul className="divide-y divide-white/[0.04]">
             {filteredTasks.map((task) => (
-              <li key={task.id}
-                className="flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors cursor-pointer group"
-                onClick={() => handleOpenEditModal(task)}>
-                
+              <li
+                key={task.id}
+                className="flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors cursor-pointer group"
+                onClick={() => handleOpenEditModal(task)}
+              >
                 {/* Completion checkbox */}
                 <button
                   onClick={(e) => handleToggleTaskDone(task, e)}
@@ -216,7 +248,7 @@ const Tasks = () => {
                   title={task.status === 'Done' ? 'Mark as Todo' : 'Mark as Done'}
                   className={`shrink-0 flex items-center justify-center h-6 w-6 rounded-full border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500/30 ${
                     task.status === 'Done'
-                      ? 'border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-400 hover:border-emerald-400'
+                      ? 'border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-400 hover:border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
                       : 'border-white/20 bg-transparent hover:border-violet-400 hover:bg-violet-500/10'
                   } ${togglingTaskIds.has(task.id) ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                   aria-label={task.status === 'Done' ? 'Mark as Todo' : 'Mark as Done'}
@@ -229,45 +261,53 @@ const Tasks = () => {
                 </button>
 
                 {/* Status control */}
-                <select value={task.status}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => { e.stopPropagation(); handleStatusChange(task.id, e.target.value, e); }}
-                  className="h-9 w-full sm:w-auto rounded-lg border border-white/[0.08] bg-white/[0.04] py-0 pl-3 pr-8 text-xs font-medium text-slate-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none shrink-0 appearance-none">
-                  <option value="Todo">Todo</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Done">Done</option>
-                </select>
+                <div className="w-full sm:w-32 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <CustomSelect
+                    size="sm"
+                    value={task.status}
+                    onChange={(e) => handleStatusChange(task.id, e.target.value, e)}
+                    options={statusOptions}
+                  />
+                </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium transition-colors ${task.status === 'Done' ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                  <p className={`text-sm font-medium transition-colors ${task.status === 'Done' ? 'line-through text-slate-500' : 'text-slate-100'}`}>
                     {task.title}
                   </p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                    <span className="flex items-center gap-1.5 bg-white/[0.04] px-2 py-0.5 rounded-md">
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                    <span className="flex items-center gap-1.5 bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.05]">
                       <FolderKanban className="h-3 w-3 text-slate-400 shrink-0" />
-                      <span className="truncate max-w-[120px]">{task.Project?.title || 'Unknown Project'}</span>
+                      <span className="truncate max-w-[140px] text-slate-300 font-medium">{task.Project?.title || 'Unknown Project'}</span>
                     </span>
                     {task.dueDate && (
                       <span className={`flex items-center gap-1.5 ${
-                        new Date(task.dueDate) < new Date() && task.status !== 'Done' ? 'text-red-400 font-medium' : ''
+                        new Date(task.dueDate) < new Date() && task.status !== 'Done' ? 'text-rose-400 font-medium' : 'text-slate-400'
                       }`}>
-                        <Clock className="h-3.5 w-3.5 shrink-0" />
+                        <Clock className="h-3 w-3" />
                         {format(new Date(task.dueDate), 'MMM d, yyyy')}
+                        {new Date(task.dueDate) < new Date() && task.status !== 'Done' && ' · Overdue'}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0 w-full sm:w-auto">
+                <div className="flex items-center justify-between sm:justify-end gap-3 mt-1 sm:mt-0 w-full sm:w-auto shrink-0">
                   <PriorityBadge priority={task.priority} />
+
                   <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); handleOpenEditModal(task); }}
-                      className="rounded-md p-2 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300 transition-colors" aria-label="Edit task">
-                      <Edit className="h-4 w-4" />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleOpenEditModal(task); }}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-white/[0.08] hover:text-slate-200 transition-colors"
+                      aria-label="Edit task"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={(e) => handleDeleteTask(task.id, e)}
-                      className="rounded-md p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-colors" aria-label="Delete task">
-                      <Trash2 className="h-4 w-4" />
+                    <button
+                      onClick={(e) => handleDeleteTask(task.id, e)}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-400 transition-colors"
+                      aria-label="Delete task"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
@@ -277,60 +317,95 @@ const Tasks = () => {
         </div>
       )}
 
-      {/* Create/Edit Task Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
-        title={editingTask ? 'Edit Task' : 'New Task'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Project</label>
-            <select required value={formData.projectId}
-              onChange={(e) => setFormData({...formData, projectId: e.target.value})} className={selectClass}>
-              {projects.map(p => (<option key={p.id} value={p.id}>{p.title}</option>))}
-            </select>
+      {/* Create / Edit Task Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingTask ? 'Edit Task' : 'Create New Task'}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="task-page-modal-form"
+              disabled={isSubmitting}
+              className="btn-primary"
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Saving…' : (editingTask ? 'Save Changes' : 'Create Task')}
+            </button>
           </div>
+        }
+      >
+        <form id="task-page-modal-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Title</label>
-            <input type="text" required value={formData.title}
-              onChange={(e) => setFormData({...formData, title: e.target.value})} className={inputClass}
-              placeholder="e.g., Setup CI/CD pipeline" />
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Task Title</label>
+            <input
+              type="text"
+              required
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className={inputClass}
+              placeholder="e.g., Update database migrations"
+            />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
-            <textarea rows={2} value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})} className={inputClass}
-              placeholder="Optional details…" />
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Description</label>
+            <textarea
+              rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className={inputClass}
+              placeholder="Provide context or acceptance criteria…"
+            />
           </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Project</label>
+            <CustomSelect
+              value={formData.projectId}
+              name="projectId"
+              onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+              options={projects.map(p => ({ value: p.id, label: p.title }))}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Status</label>
-              <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className={selectClass}>
-                <option value="Todo">Todo</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Done">Done</option>
-              </select>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Status</label>
+              <CustomSelect
+                value={formData.status}
+                name="status"
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                options={statusOptions}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Priority</label>
-              <select value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value})} className={selectClass}>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-              </select>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Priority</label>
+              <CustomSelect
+                value={formData.priority}
+                name="priority"
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                options={priorityOptions}
+              />
             </div>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Due Date</label>
-            <input type="date" value={formData.dueDate}
-              onChange={(e) => setFormData({...formData, dueDate: e.target.value})} className={inputClass} />
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.06]">
-            <button type="button" onClick={() => setIsModalOpen(false)}
-              className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-400 hover:bg-white/[0.04] transition-colors">Cancel</button>
-            <button type="submit" disabled={isSubmitting}
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-purple-500 disabled:opacity-50 transition-all">
-              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isSubmitting ? 'Saving…' : 'Save Task'}
-            </button>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Due Date</label>
+            <input
+              type="date"
+              value={formData.dueDate}
+              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+              className={inputClass}
+            />
           </div>
         </form>
       </Modal>
