@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import {
@@ -14,9 +15,19 @@ const TABS = ['Personal Info', 'Security'];
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
   const [stats, setStats] = useState({ projects: 0, completedTasks: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('Personal Info');
+  const [activeTab, setActiveTab] = useState(() => tabParam === 'security' ? 'Security' : 'Personal Info');
+
+  useEffect(() => {
+    if (tabParam === 'security') {
+      setActiveTab('Security');
+    } else if (tabParam === 'personal') {
+      setActiveTab('Personal Info');
+    }
+  }, [tabParam]);
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -75,7 +86,7 @@ const Profile = () => {
       if (updateUser) {
         updateUser(data);
       } else {
-        localStorage.setItem('user', JSON.stringify(data));
+        sessionStorage.setItem('user', JSON.stringify(data));
       }
 
       setMessage({ type: 'success', text: 'Profile updated successfully.' });

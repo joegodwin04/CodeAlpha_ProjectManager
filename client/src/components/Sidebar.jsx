@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, User, LogOut, X, Zap,
-  Plus, ShieldCheck, TrendingUp
+  Plus, ShieldCheck, TrendingUp, Eye, LogIn, UserPlus, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { GUEST_STATS } from '../data/guestDemoData';
 
 const workspaceNav = [
   { name: 'Dashboard', href: '/',         icon: LayoutDashboard },
@@ -14,16 +15,21 @@ const workspaceNav = [
 ];
 
 const accountNav = [
-  { name: 'Profile',           href: '/profile', icon: User },
-  { name: 'Security Settings', href: '/profile', icon: ShieldCheck },
+  { name: 'Profile',           href: '/profile',              tab: 'personal', icon: User },
+  { name: 'Security Settings', href: '/profile?tab=security', tab: 'security', icon: ShieldCheck },
 ];
 
 const SidebarContent = ({ onNavClick }) => {
-  const { user, logout } = useAuth();
-  const [stats, setStats] = useState(null);
+  const { user, logout, isGuest, exitGuestMode } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Guest mode: use static demo stats immediately; real users fetch from API
+  const [stats, setStats] = useState(() => isGuest ? GUEST_STATS : null);
 
-  // Fetch real workspace productivity metrics
   useEffect(() => {
+    // Authenticated mode only — fetch real workspace stats from the API
+    if (isGuest) return; // static demo stats already set via state initialiser
+
     let isMounted = true;
     const fetchQuickStats = async () => {
       try {
@@ -38,12 +44,22 @@ const SidebarContent = ({ onNavClick }) => {
 
     fetchQuickStats();
     return () => { isMounted = false; };
-  }, []);
+  }, [isGuest]);
 
-  const totalTasks = stats?.tasks?.total || 0;
-  const completedTasks = stats?.tasks?.completed || 0;
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  const activeProjects = stats?.projects?.active || 0;
+  const totalTasks      = stats?.tasks?.total     || 0;
+  const completedTasks  = stats?.tasks?.completed || 0;
+  const completionRate  = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const activeProjects  = stats?.projects?.active || 0;
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  const handleExitGuest = () => {
+    exitGuestMode();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div className="flex h-full flex-col bg-[#0e111d] border-r border-white/[0.07]">
@@ -56,12 +72,22 @@ const SidebarContent = ({ onNavClick }) => {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-bold text-white tracking-tight truncate">ProjectManager</span>
-              <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                PRO
-              </span>
+              {isGuest ? (
+                <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/25">
+                  DEMO
+                </span>
+              ) : (
+                <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                  PRO
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-400 truncate">
-              {user?.name ? `${user.name.split(' ')[0]}'s Workspace` : 'Workspace'}
+              {isGuest
+                ? 'Guest Preview'
+                : user?.name
+                  ? `${user.name.split(' ')[0]}'s Workspace`
+                  : 'Workspace'}
             </p>
           </div>
         </div>
@@ -69,14 +95,26 @@ const SidebarContent = ({ onNavClick }) => {
 
       {/* Quick Action Button */}
       <div className="px-3 pt-3.5 pb-1">
-        <Link
-          to="/projects"
-          onClick={onNavClick}
-          className="flex items-center justify-center gap-2 w-full rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-violet-600/20 border border-white/10 transition-all cursor-pointer hover:shadow-violet-600/30 hover:-translate-y-0.5"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New Project
-        </Link>
+        {isGuest ? (
+          /* Guest: disabled "New Project" — shows a locked variant */
+          <button
+            onClick={() => { onNavClick?.(); navigate('/login'); exitGuestMode(); }}
+            className="flex items-center justify-center gap-2 w-full rounded-lg bg-white/[0.03] border border-white/[0.08] px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-white/[0.06] hover:text-slate-400 transition-all cursor-pointer"
+            title="Sign in to create projects"
+          >
+            <Lock className="h-3.5 w-3.5" />
+            New Project
+          </button>
+        ) : (
+          <Link
+            to="/projects?new=true"
+            onClick={onNavClick}
+            className="flex items-center justify-center gap-2 w-full rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-violet-600/20 border border-white/10 transition-all cursor-pointer hover:shadow-violet-600/30 hover:-translate-y-0.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Project
+          </Link>
+        )}
       </div>
 
       {/* Structured Navigation */}
@@ -125,61 +163,63 @@ const SidebarContent = ({ onNavClick }) => {
           </ul>
         </div>
 
-        {/* Account & Security Section */}
-        <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Account & Preferences
-          </p>
-          <ul role="list" className="space-y-1">
-            {accountNav.map((item) => (
-              <li key={item.name}>
-                <NavLink
-                  to={item.href}
-                  onClick={onNavClick}
-                  className={({ isActive }) =>
-                    `group flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-                      isActive && item.name === 'Profile'
-                        ? 'bg-violet-600/15 text-violet-300 border border-violet-500/30 shadow-sm'
-                        : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
+        {/* Account & Security Section — hidden for guests */}
+        {!isGuest && (
+          <div>
+            <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Account &amp; Preferences
+            </p>
+            <ul role="list" className="space-y-1">
+              {accountNav.map((item) => {
+                const isItemActive = item.tab === 'security'
+                  ? location.pathname === '/profile' && location.search.includes('tab=security')
+                  : location.pathname === '/profile' && !location.search.includes('tab=security');
+
+                return (
+                  <li key={item.name}>
+                    <NavLink
+                      to={item.href}
+                      onClick={onNavClick}
+                      className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                        isItemActive
+                          ? 'bg-violet-600/15 text-violet-300 border border-violet-500/30 shadow-sm'
+                          : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+                      }`}
+                    >
                       <item.icon
                         className={`h-4 w-4 shrink-0 transition-colors ${
-                          isActive && item.name === 'Profile'
+                          isItemActive
                             ? 'text-violet-400'
                             : 'text-slate-400 group-hover:text-slate-300'
                         }`}
                         aria-hidden="true"
                       />
                       <span>{item.name}</span>
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
+                    </NavLink>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
-        {/* Real Workspace Productivity / Health Card */}
+        {/* Workspace Productivity / Health Card */}
         {stats && (
           <div className="pt-2">
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5 space-y-2.5">
+            <div className={`rounded-xl border p-3.5 space-y-2.5 ${isGuest ? 'border-amber-500/15 bg-amber-500/[0.03]' : 'border-white/[0.07] bg-white/[0.02]'}`}>
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-1.5 text-slate-400 font-medium">
-                  <TrendingUp className="h-3.5 w-3.5 text-violet-400" />
-                  Productivity
+                  <TrendingUp className={`h-3.5 w-3.5 ${isGuest ? 'text-amber-400' : 'text-violet-400'}`} />
+                  {isGuest ? 'Demo Stats' : 'Productivity'}
                 </span>
-                <span className="text-violet-300 font-bold tabular-nums text-xs">
+                <span className={`font-bold tabular-nums text-xs ${isGuest ? 'text-amber-300' : 'text-violet-300'}`}>
                   {completionRate}%
                 </span>
               </div>
 
               <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-all duration-500"
+                  className={`h-full transition-all duration-500 ${isGuest ? 'bg-gradient-to-r from-amber-500 to-orange-400' : 'bg-gradient-to-r from-violet-500 to-emerald-400'}`}
                   style={{ width: `${completionRate}%` }}
                 />
               </div>
@@ -191,33 +231,81 @@ const SidebarContent = ({ onNavClick }) => {
             </div>
           </div>
         )}
+
+        {/* Guest CTA block */}
+        {isGuest && (
+          <div className="pt-1">
+            <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-3.5 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <Eye className="h-3.5 w-3.5 text-violet-400 shrink-0" />
+                <p className="text-xs font-semibold text-violet-300">Guest Preview</p>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Create a free account to manage your own projects, tasks, and track real progress.
+              </p>
+              <div className="flex flex-col gap-1.5 pt-0.5">
+                <Link
+                  to="/register"
+                  onClick={() => { exitGuestMode(); onNavClick?.(); }}
+                  className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 px-3 py-1.5 text-[11px] font-semibold text-white transition-all"
+                >
+                  <UserPlus className="h-3 w-3" />
+                  Create Account
+                </Link>
+                <button
+                  onClick={() => { handleExitGuest(); onNavClick?.(); }}
+                  className="flex items-center justify-center gap-1.5 w-full rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all"
+                >
+                  <LogIn className="h-3 w-3" />
+                  Sign In
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* User Area + Logout Footer */}
       <div className="border-t border-white/[0.07] p-3">
-        <Link
-          to="/profile"
-          onClick={onNavClick}
-          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-white/[0.04] transition-colors group"
-        >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-xs font-semibold text-white shadow-sm ring-1 ring-white/10">
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+        {isGuest ? (
+          /* Guest footer */
+          <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 bg-white/[0.02] border border-white/[0.05]">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/25 text-xs font-semibold text-amber-400">
+              <Eye className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-slate-300">Guest Preview</p>
+              <p className="truncate text-[11px] text-slate-500">Demo mode — read only</p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-slate-200 group-hover:text-violet-300 transition-colors">
-              {user?.name}
-            </p>
-            <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
-          </div>
-        </Link>
+        ) : (
+          /* Authenticated user footer */
+          <>
+            <Link
+              to="/profile"
+              onClick={onNavClick}
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-white/[0.04] transition-colors group"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-xs font-semibold text-white shadow-sm ring-1 ring-white/10">
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-slate-200 group-hover:text-violet-300 transition-colors">
+                  {user?.name}
+                </p>
+                <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
+              </div>
+            </Link>
 
-        <button
-          onClick={logout}
-          className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-400 hover:bg-rose-500/10 hover:text-rose-400 transition-colors cursor-pointer"
-        >
-          <LogOut className="h-4 w-4" aria-hidden="true" />
-          Sign out
-        </button>
+            <button
+              onClick={handleLogout}
+              className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-400 hover:bg-rose-500/10 hover:text-rose-400 transition-colors cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              Sign out
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

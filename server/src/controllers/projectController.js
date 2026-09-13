@@ -1,4 +1,4 @@
-const { Project, Task } = require('../models');
+const { Project, Task, User } = require('../models');
 
 // Get all projects for user
 const getProjects = async (req, res) => {
@@ -24,7 +24,17 @@ const getProject = async (req, res) => {
   try {
     const project = await Project.findOne({
       where: { id: req.params.id, userId: req.user.id },
-      include: [{ model: Task }]
+      include: [
+        {
+          model: Task,
+          include: [
+            {
+              model: User,
+              attributes: ['id', 'name', 'username', 'email']
+            }
+          ]
+        }
+      ]
     });
 
     if (!project) {

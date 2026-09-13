@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { GUEST_PROJECTS, GUEST_TASKS } from '../data/guestDemoData';
 import {
   FolderKanban, CheckSquare, AlertTriangle, ArrowRight, Plus,
   Clock, Zap, CheckCircle2, Calendar, Layers
@@ -152,12 +153,16 @@ const ListEmpty = ({ icon: Icon, text }) => (
 );
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user, isGuest } = useAuth();
+  // Guest mode: seed state with static demo data so we never call the API
+  const [projects, setProjects] = useState(() => isGuest ? GUEST_PROJECTS : []);
+  const [tasks, setTasks] = useState(() => isGuest ? GUEST_TASKS : []);
+  const [loading, setLoading] = useState(!isGuest); // guests start already loaded
 
   useEffect(() => {
+    // Authenticated mode only — fetch real data from the API
+    if (isGuest) return;
+
     const fetchDashboardData = async () => {
       try {
         const [projectsRes, tasksRes] = await Promise.all([
@@ -173,7 +178,7 @@ const Dashboard = () => {
       }
     };
     fetchDashboardData();
-  }, []);
+  }, [isGuest]);
 
   if (loading) return <LoadingSpinner text="Loading dashboard…" />;
 
@@ -255,19 +260,34 @@ const Dashboard = () => {
       {/* ═══ HEADER ═══ */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight sm:text-3xl">
-            Welcome back, {user?.name?.split(' ')[0]} 👋
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Here's what's happening across your workspace today.
-          </p>
+          {isGuest ? (
+            <>
+              <h1 className="text-2xl font-bold text-white tracking-tight sm:text-3xl">
+                Explore ProjectManager 🚀
+              </h1>
+              <p className="mt-1 text-sm text-slate-400">
+                You're viewing demo data in Guest Preview mode. Sign up to manage your own workspace.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-white tracking-tight sm:text-3xl">
+                Welcome back, {user?.name?.split(' ')[0]} 👋
+              </h1>
+              <p className="mt-1 text-sm text-slate-400">
+                Here's what's happening across your workspace today.
+              </p>
+            </>
+          )}
         </div>
-        <Link
-          to="/projects"
-          className="btn-primary w-fit"
-        >
-          <Plus className="h-4 w-4" /> New Project
-        </Link>
+        {!isGuest && (
+          <Link
+            to="/projects?new=true"
+            className="btn-primary w-fit"
+          >
+            <Plus className="h-4 w-4" /> New Project
+          </Link>
+        )}
       </div>
 
       {/* ═══ ROW 1: KPI CARDS ═══ */}

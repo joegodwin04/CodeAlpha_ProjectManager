@@ -6,7 +6,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
   dialectOptions: {
     // Add SSL support for Neon/Heroku/Render
-    ssl: process.env.NODE_ENV === 'production' ? {
+    ssl: (process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('sslmode=require')) ? {
       require: true,
       rejectUnauthorized: false
     } : false

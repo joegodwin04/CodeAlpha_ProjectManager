@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { GUEST_PROJECTS } from '../data/guestDemoData';
 import {
   Plus, Search, Calendar, FolderKanban, Loader2, LayoutGrid, List,
-  TrendingUp, CheckCircle2, Clock, AlertTriangle, ArrowRight
+  TrendingUp, CheckCircle2, Clock, AlertTriangle, ArrowRight, Lock
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -13,6 +15,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
 import CustomSelect from '../components/ui/CustomSelect';
+import GuestAuthPrompt from '../components/ui/GuestAuthPrompt';
 
 const inputClass = "block w-full rounded-lg border border-white/[0.09] bg-[#121526] py-2.5 px-3.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none transition-all";
 
@@ -28,12 +31,16 @@ const statusOptions = ['Planning', 'Active', 'On Hold', 'Completed'];
 const priorityOptions = ['Low', 'Medium', 'High'];
 
 const Projects = () => {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { isGuest } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Guest mode: seed state with static demo data at mount — no API needed
+  const [projects, setProjects] = useState(() => isGuest ? GUEST_PROJECTS : []);
+  const [loading, setLoading] = useState(!isGuest);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [guestPromptOpen, setGuestPromptOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: '', description: '', status: 'Planning', priority: 'Medium', startDate: '', dueDate: ''
   });
@@ -51,8 +58,20 @@ const Projects = () => {
   };
 
   useEffect(() => {
+    if (isGuest) return; // static demo data already set via state initialiser
     fetchProjects();
-  }, []);
+  }, [isGuest]);
+
+  useEffect(() => {
+    if (searchParams.get('new') === 'true' && !isGuest) {
+      setIsModalOpen(true);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('new');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams, isGuest]);
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
@@ -116,16 +135,28 @@ const Projects = () => {
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight sm:text-3xl">Projects</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Overview, health metrics, and deliverables across all your workspaces.
+            {isGuest
+              ? 'Browsing demo projects in Guest Preview mode.'
+              : 'Overview, health metrics, and deliverables across all your workspaces.'}
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="btn-primary w-fit"
-        >
-          <Plus className="h-4 w-4" />
-          New Project
-        </button>
+        {isGuest ? (
+          <button
+            onClick={() => setGuestPromptOpen(true)}
+            className="inline-flex items-center gap-2 btn-secondary w-fit opacity-70 cursor-pointer"
+          >
+            <Lock className="h-4 w-4" />
+            New Project
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="btn-primary w-fit"
+          >
+            <Plus className="h-4 w-4" />
+            New Project
+          </button>
+        )}
       </div>
 
       {/* KPI Overview Cards (Real data) */}
@@ -593,100 +624,109 @@ const Projects = () => {
         </div>
       )}
 
-      {/* Create Project Modal with CustomSelect Dropdowns */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Create New Project"
-        footer={
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="create-project-form"
-              disabled={isSubmitting}
-              className="btn-primary"
-            >
-              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isSubmitting ? 'Creating…' : 'Create Project'}
-            </button>
-          </div>
-        }
-      >
-        <form id="create-project-form" onSubmit={handleCreateProject} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Project Title</label>
-            <input
-              type="text"
-              required
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className={inputClass}
-              placeholder="e.g., Mobile App Redesign"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Description</label>
-            <textarea
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className={inputClass}
-              placeholder="Brief description of goals, scope, and deliverables…"
-            />
-          </div>
-
-          {/* Custom Dark Selects for Status & Priority */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Status</label>
-              <CustomSelect
-                value={formData.status}
-                name="status"
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                options={statusOptions}
-              />
+      {/* Create Project Modal — only for authenticated users */}
+      {!isGuest && (
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title="Create New Project"
+          footer={
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="create-project-form"
+                disabled={isSubmitting}
+                className="btn-primary"
+              >
+                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isSubmitting ? 'Creating…' : 'Create Project'}
+              </button>
             </div>
+          }
+        >
+          <form id="create-project-form" onSubmit={handleCreateProject} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Priority</label>
-              <CustomSelect
-                value={formData.priority}
-                name="priority"
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                options={priorityOptions}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Start Date</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Project Title</label>
               <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                type="text"
+                required
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className={inputClass}
+                placeholder="e.g., Mobile App Redesign"
               />
             </div>
+
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Due Date</label>
-              <input
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Description</label>
+              <textarea
+                rows={3}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className={inputClass}
+                placeholder="Brief description of goals, scope, and deliverables…"
               />
             </div>
-          </div>
-        </form>
-      </Modal>
+
+            {/* Custom Dark Selects for Status & Priority */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Status</label>
+                <CustomSelect
+                  value={formData.status}
+                  name="status"
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  options={statusOptions}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Priority</label>
+                <CustomSelect
+                  value={formData.priority}
+                  name="priority"
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                  options={priorityOptions}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Start Date</label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Due Date</label>
+                <input
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Guest auth prompt */}
+      <GuestAuthPrompt
+        isOpen={guestPromptOpen}
+        onClose={() => setGuestPromptOpen(false)}
+        action="create a project"
+      />
     </div>
   );
 };

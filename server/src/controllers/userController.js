@@ -139,8 +139,23 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
+// Get all users for task assignment (public profile info only)
+const getUsers = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'name', 'username', 'email'],
+      order: [['name', 'ASC']]
+    });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
-  getDashboardStats
+  getDashboardStats,
+  getUsers
 };
+

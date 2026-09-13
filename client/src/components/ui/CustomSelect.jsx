@@ -34,13 +34,15 @@ const CustomSelect = ({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef(null);
 
-  // Normalize options to { value, label } format
+  // Normalize options to { value, label, sublabel, icon, avatar, dot } format
   const normalizedOptions = options.map((opt) => {
     if (typeof opt === 'object' && opt !== null) {
       return {
         value: opt.value,
         label: opt.label !== undefined ? opt.label : opt.value,
+        sublabel: opt.sublabel,
         icon: opt.icon,
+        avatar: opt.avatar,
         dot: opt.dot
       };
     }
@@ -147,10 +149,21 @@ const CustomSelect = ({
         } ${className}`}
       >
         <span className="flex items-center gap-2 truncate">
-          {selectedOption && renderIndicator(selectedOption.value)}
+          {selectedOption?.avatar ? (
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-600/30 text-[10px] font-bold text-violet-300 ring-1 ring-white/15">
+              {selectedOption.avatar}
+            </span>
+          ) : (
+            selectedOption && renderIndicator(selectedOption.value)
+          )}
           <span className={selectedOption ? 'text-slate-100 font-medium truncate' : 'text-slate-500 truncate'}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
+          {selectedOption?.sublabel && (
+            <span className="text-slate-500 text-xs truncate hidden sm:inline">
+              {selectedOption.sublabel}
+            </span>
+          )}
         </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${
@@ -165,7 +178,7 @@ const CustomSelect = ({
           role="listbox"
           className={`absolute ${
             align === 'right' ? 'right-0' : 'left-0'
-          } mt-1.5 w-full min-w-[160px] max-h-60 overflow-y-auto rounded-xl border border-white/[0.12] bg-[#15192e] p-1 shadow-2xl z-50 animate-scale-in outline-none`}
+          } mt-1.5 w-full min-w-[180px] max-h-60 overflow-y-auto rounded-xl border border-white/[0.12] bg-[#15192e] p-1 shadow-2xl z-50 animate-scale-in outline-none`}
         >
           {normalizedOptions.map((opt, index) => {
             const isSelected = String(opt.value) === String(value);
@@ -187,8 +200,19 @@ const CustomSelect = ({
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
-                  {renderIndicator(opt.value)}
-                  <span className="truncate">{opt.label}</span>
+                  {opt.avatar ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-600/30 text-[10px] font-bold text-violet-300 ring-1 ring-white/15">
+                      {opt.avatar}
+                    </span>
+                  ) : (
+                    renderIndicator(opt.value)
+                  )}
+                  <div className="flex flex-col truncate text-left">
+                    <span className="truncate">{opt.label}</span>
+                    {opt.sublabel && (
+                      <span className="text-[10px] text-slate-400 truncate">{opt.sublabel}</span>
+                    )}
+                  </div>
                 </div>
                 {isSelected && (
                   <Check className="h-3.5 w-3.5 text-violet-400 shrink-0" />
