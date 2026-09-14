@@ -277,7 +277,7 @@ Example events:
 ```text
 taskUpdated
 
-📂 Project Structure
+**📂 Project Structure**
 
 CodeAlpha_ProjectManager/
 │
@@ -352,6 +352,7 @@ CodeAlpha_ProjectManager/
 
 ---
 
+```
 ## ⚙️ Installation
 
 ### Prerequisites
@@ -368,40 +369,49 @@ Make sure you have the following installed:
 ```bash
 git clone https://github.com/joegodwin04/CodeAlpha_ProjectManager.git
 cd CodeAlpha_ProjectManager
+```
 
-2. Backend Setup
+### 2. Backend Setup
 
-Navigate to the backend directory:
+**Navigate to the backend directory:**
 
+```bash
 cd server
 npm install
+```
 
-Create a .env file inside the server directory:
+**Create a `.env` file inside the `server` directory:**
 
+```env
 PORT=5000
 DATABASE_URL=your_postgresql_connection_string
 JWT_SECRET=your_secure_jwt_secret
 NODE_ENV=development
+```
 
-Start the backend:
+**Start the backend:**
 
+```bash
 npm run dev
+```
 
-The backend will run on:
+**The backend will run on:**
 
-http://localhost:5000
+`http://localhost:5000`
 
-3. Frontend Setup
+### 3. Frontend Setup
 
-Open another terminal and navigate to the frontend:
+**Open another terminal and navigate to the frontend:**
 
+```bash
 cd client
 npm install
 npm run dev
+```
 
-The frontend will run on:
+**The frontend will run on:**
 
-http://localhost:5173
+`http://localhost:5173`
 
 ▶️ Running the Project
 
