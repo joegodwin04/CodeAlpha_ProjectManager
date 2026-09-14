@@ -463,176 +463,246 @@ commentAdded
 commentDeleted
 notification
 
-⚡ Real-Time Architecture
+## ⚡ Real-Time Architecture
 
-┌──────────────────────┐
-│    React Frontend    │
-│                      │
-│  Socket.IO Client    │
-└──────────┬───────────┘
-           │
-           │ WebSocket
-           ▼
-┌──────────────────────┐
-│ Node.js + Express    │
-│                      │
-│   Socket.IO Server   │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ PostgreSQL / Neon    │
-│                      │
-│ Users                │
-│ Projects             │
-│ Tasks                │
-│ Comments             │
-│ Notifications        │
-└──────────────────────┘
+The application uses **Socket.IO** for real-time communication between connected clients and the backend server.
 
-Project Rooms
+### **Project Rooms**
 
 Clients can join project-specific Socket.IO rooms to receive updates related to a particular project.
 
-User Rooms
+Example event:
 
-Each authenticated user can also join a user-specific room to receive personal notifications such as task assignments and task activity.
+```text
+taskUpdated
+```
 
-🔄 Application Workflow
+### **User Rooms**
 
-User Registration
-       │
-       ▼
-     Login
-       │
-       ▼
-   Dashboard
-       │
-       ▼
- Create Project
-       │
-       ▼
-  Create Tasks
-       │
-       ▼
- Assign Tasks
-       │
-       ▼
-Update Task Status
-       │
-       ▼
- Add Comments
-       │
-       ▼
- Notifications
-       │
-       ▼
- Real-Time Updates
- 
-📂 Main Application Pages
+Each authenticated user can join a user-specific room to receive personal notifications such as task assignments and task activity.
 
-Login:
+### **Architecture**
+
+```text
+┌──────────────────────────────┐
+│       React Frontend         │
+│                              │
+│      Socket.IO Client        │
+└──────────────┬───────────────┘
+               │
+               │ WebSocket
+               ▼
+┌──────────────────────────────┐
+│      Node.js + Express       │
+│                              │
+│      Socket.IO Server        │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│       PostgreSQL / Neon      │
+│                              │
+│  Users                       │
+│  Projects                    │
+│  Tasks                       │
+│  Comments                    │
+│  Notifications               │
+└──────────────────────────────┘
+```
+
+### **Real-Time Events**
+
+```text
+taskUpdated
+task_assigned
+commentAdded
+commentDeleted
+notification
+```
+
+When a change occurs, connected clients receive the relevant update without manually refreshing the page.
+
+---
+
+## 🔄 Application Workflow
+
+```text
+┌───────────────────────┐
+│   User Registration   │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│        Login          │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│      Dashboard        │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│    Create Project     │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│     Create Tasks      │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│     Assign Tasks      │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│  Update Task Status   │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│     Add Comments      │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│    Notifications      │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│   Real-Time Updates   │
+└───────────────────────┘
+```
+
+---
+
+## 📂 Main Application Pages
+
+### **Login**
 
 Allows users to securely register and authenticate.
 
-Dashboard:
+### **Dashboard**
 
 Provides an overview of projects, tasks, progress, and activity.
 
-Projects:
+### **Projects**
 
 Allows users to create, view, edit, and manage projects.
 
-Project Details:
+### **Project Details**
 
 Provides project-specific task management, task assignment, comments, and project progress.
 
-Tasks:
+### **Tasks**
 
 Provides a centralized view of tasks and task management operations.
 
-Profile:
+### **Profile**
 
 Allows users to manage their personal information and account settings.
 
-🗃️ Data Flow
+---
 
-React UI
-   │
-   ▼
-Axios API Requests
-   │
-   ▼
-Express REST API
-   │
-   ▼
-Controllers
-   │
-   ▼
-Sequelize ORM
-   │
-   ▼
-PostgreSQL / Neon
+## 🗃️ Data Flow
 
-Real-time events are handled separately through Socket.IO:
+```text
+┌───────────────────────┐
+│       React UI        │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│   Axios API Requests  │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│    Express REST API   │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│      Controllers      │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│     Sequelize ORM     │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│    PostgreSQL / Neon  │
+└───────────────────────┘
+```
 
-Database Operation
-        │
-        ▼
-   Socket.IO Event
-        │
-        ▼
- Connected Clients
-        │
-        ▼
-UI Updates Without Refresh
+### **Real-Time Data Flow**
 
-🚀 Future Improvements
+```text
+┌───────────────────────┐
+│   Database Operation  │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│    Socket.IO Event    │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│   Connected Clients    │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│ UI Updates Without    │
+│       Refresh         │
+└───────────────────────┘
+```
+
+---
+
+## 🚀 Future Improvements
 
 Possible future enhancements include:
 
-Drag-and-drop task management
-Advanced team roles and permissions
-Email notifications
-File attachments
-Rich-text task descriptions
-Advanced project analytics
-Calendar integration
-Activity history
-Enhanced team collaboration
-Project activity timeline
+- Drag-and-drop task management
+- Advanced team roles and permissions
+- Email notifications
+- File attachments
+- Rich-text task descriptions
+- Advanced project analytics
+- Calendar integration
+- Activity history
+- Enhanced team collaboration
+- Project activity timeline
 
-🎓 CodeAlpha Internship
+---
+
+## 🎓 CodeAlpha Internship
 
 This project was developed as part of the:
 
-CodeAlpha Full Stack Development Internship
+**CodeAlpha Full Stack Development Internship**
 
-Task 3 — Project Management Tool
+### **Task 3 — Project Management Tool**
 
 The project demonstrates a full-stack project management platform featuring:
 
-User authentication
-Project management
-Task management
-Task assignment
-Task comments
-Notifications
-Real-time collaboration
-Responsive frontend
-REST API backend
-PostgreSQL database
+- User authentication
+- Project management
+- Task management
+- Task assignment
+- Task comments
+- Notifications
+- Real-time collaboration
+- Responsive frontend
+- REST API backend
+- PostgreSQL database
 
-📄 License
+---
 
-This project is licensed under the MIT License.
+## 📄 License
 
-See the LICENSE file for more information.
+This project is licensed under the **MIT License**.
 
-👨‍💻 Author
+See the [LICENSE](LICENSE) file for more information.
 
-Joe Godwin
+---
 
-GitHub: joegodwin04
+## 👨‍💻 Author
 
-Built with ❤️ as part of the CodeAlpha Full Stack Development Internship.
+**Joe Godwin**
+
+**GitHub:** [joegodwin04](https://github.com/joegodwin04)
+
+---
+
+**Built with ❤️ as part of the CodeAlpha Full Stack Development Internship.**
